@@ -1,0 +1,33 @@
+# =========================================================
+# requirements.txt — projet-segmentation-clients
+# Python >= 3.10
+# =========================================================
+
+# ---------- Data manipulation ----------
+numpy>=1.26
+pandas>=2.2
+scipy>=1.11            # skewness (scipy.stats.skew)
+
+# ---------- Visualization ----------
+matplotlib>=3.8
+seaborn>=0.13
+
+# ---------- Machine learning ----------
+scikit-learn>=1.5      # StandardScaler, PCA, KMeans, DBSCAN, Pipeline, GridSearchCV
+imbalanced-learn>=0.12 # over/under-sampling (imblearn)
+joblib>=1.4            # save / load the pipeline
+
+# ---------- Experiment tracking ----------
+mlflow>=2.15
+
+# ---------- Application ----------
+streamlit>=1.38
+
+# ---------- Notebooks ----------
+jupyter>=1.0
+ipykernel>=6.29
+
+# ---------- Bonus: Airflow ----------
+# Install Airflow separately (it has strict dependency constraints):
+# pip install "apache-airflow==<version>" --constraint \
+#   "https://raw.githubusercontent.com/apache/airflow/constraints-<version>/constraints-<python_version>.txt"
