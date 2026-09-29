@@ -74,6 +74,14 @@ def log_transform(df_clean: pd.DataFrame) -> pd.DataFrame:
     df_prepare_clustering = np.log1p(features).copy()
 
     return df_prepare_clustering
+def skewness_comparison(df_before: pd.DataFrame, df_after: pd.DataFrame) -> pd.DataFrame:
+    table = pd.DataFrame({
+        "skew_before" : df_before[FEATURE_COLUMNS].skew(),
+        "skew_after" : df_after[FEATURE_COLUMNS].skew(),
+    })
+    table["abs_reduction"] = table["skew_before"].abs() - table["skew_after"].abs()
+    table["improved"] = table["abs_reduction"] > 0
+    return table.sort_values("skew_before", ascending=False).round(2)
 
 
 if __name__ == "__main__":
