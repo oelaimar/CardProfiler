@@ -9,6 +9,7 @@ Usage:
 
 from src.extraction import ID_COLUMN, FEATURE_COLUMNS, save_processed
 from pathlib import Path
+import numpy as np
 import pandas as pd
 from typing import Literal
 
@@ -58,6 +59,22 @@ def clean_data(df_raw: pd.DataFrame, nan_strategy: Literal["drop", "median", "me
         save_processed(df, CLEAN_FILENAME)
 
     return df
+
+def log_transform(df_clean: pd.DataFrame) -> pd.DataFrame:
+    features = df_clean[FEATURE_COLUMNS]
+
+    # log1p is only defined for x > -1: amounts must be >= 0
+    negatives = (features < 0).sum()
+    if negatives.any():
+        raise ValueError(
+            f"Negative values found, log1p not applicable:\n"
+            f"{negatives[negatives > 0]}"
+        )
+    # np.log1p returns a new object -> df_clean stays untouched
+    df_prepare_clustering = np.log1p(features).copy()
+
+    return df_prepare_clustering
+
 
 if __name__ == "__main__":
     pass
