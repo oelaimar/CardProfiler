@@ -6,6 +6,7 @@ Usage:
     df_clean = clean_data(df_raw)
 
 """
+from sklearn.preprocessing import StandardScaler
 
 from src.extraction import ID_COLUMN, FEATURE_COLUMNS, save_processed
 from pathlib import Path
@@ -83,6 +84,12 @@ def skewness_comparison(df_before: pd.DataFrame, df_after: pd.DataFrame) -> pd.D
     table["improved"] = table["abs_reduction"] > 0
     return table.sort_values("skew_before", ascending=False).round(2)
 
+def scale_features(df_log: pd.DataFrame) ->tuple[pd.DataFrame, StandardScaler] :
+    scaler = StandardScaler()
+    values = scaler.fit_transform(df_log[FEATURE_COLUMNS])
+
+    df_scaled = pd.DataFrame(values, columns=FEATURE_COLUMNS, index=df_log.index)
+    return df_scaled, scaler
 
 if __name__ == "__main__":
     pass
