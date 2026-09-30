@@ -1,10 +1,6 @@
 """
 extraction.py — Data loading module.
 
-Single entry point to load the raw Credit Card Customer dataset,
-so every step of the project (notebooks, pipeline, Airflow) reads
-the data the same way.
-
 Usage:
     from src.extraction import load_raw
     df = load_raw()
@@ -56,7 +52,7 @@ def save_processed(df : pd.DataFrame, filename: str) -> Path:
     return out_path
 
 def load_processed(filename: str) -> pd.DataFrame:
-    path = Path(filename)
+    path = Path(PROCESSED_DATA_DIR / filename)
     if not path.exists():
         raise FileNotFoundError(f"Processed file not found: {path}")
     return pd.read_csv(path)
