@@ -9,6 +9,7 @@ Usage:
 from sklearn.preprocessing import StandardScaler
 
 from src.extraction import ID_COLUMN, FEATURE_COLUMNS, save_processed
+from sklearn.decomposition import PCA
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -90,6 +91,23 @@ def scale_features(df_log: pd.DataFrame) ->tuple[pd.DataFrame, StandardScaler] :
 
     df_scaled = pd.DataFrame(values, columns=FEATURE_COLUMNS, index=df_log.index)
     return df_scaled, scaler
+
+def pca_variance_analysis(df_scaled: pd.DataFrame, threshold: float = 0.80) -> tuple[pd.DataFrame, int, PCA]:
+    pca = PCA()
+    pca.fit(df_scaled[FEATURE_COLUMNS])
+
+    explained = pca.explained_variance_ratio_
+    cumulative = np.cumsum(explained)
+
+    variance_table = pd.DataFrame({
+        "component" : [f"PC{i + 1}" for i in range(len(explained))],
+        "explained_variance" : explained,
+        "cumulative_variance" : cumulative,
+    })
+
+    n_components = int(np.argmax(cumulative >= threshold) + 1)
+
+    return variance_table, n_components, pca
 
 if __name__ == "__main__":
     pass
