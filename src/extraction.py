@@ -7,6 +7,8 @@ Usage:
 """
 
 from pathlib import Path
+
+import joblib
 import pandas as pd
 
 # paths
@@ -14,6 +16,7 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
+MODELS_DIR = PROJECT_ROOT / "models"
 
 
 DEFAULT_RAW_FILE = RAW_DATA_DIR / "dataset.csv"
@@ -56,6 +59,18 @@ def load_processed(filename: str) -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError(f"Processed file not found: {path}")
     return pd.read_csv(path)
+
+def save_model(obj, filename: str) -> Path:
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = MODELS_DIR / filename
+    joblib.dump(obj,out_path)
+    return out_path
+
+def load_model(filename: str):
+    path = MODELS_DIR / filename
+    if not path.exists():
+        raise FileNotFoundError(f"Model not found: {path}")
+    return joblib.load(path)
 
 if __name__ == "__main__" :
     pass
