@@ -109,5 +109,12 @@ def pca_variance_analysis(df_scaled: pd.DataFrame, threshold: float = 0.80) -> t
 
     return variance_table, n_components, pca
 
+def prepare_for_clustering(df_clean : pd.DataFrame, save: bool = True) ->tuple[pd.DataFrame, StandardScaler]:
+    df_log = log_transform(df_clean)
+    df_prepare_clustering, scaler = scale_features(df_log)
+    if save:
+        save_processed(df_prepare_clustering, "df_prepare_clustering.csv")
+    return df_prepare_clustering , scaler
+
 if __name__ == "__main__":
     pass
