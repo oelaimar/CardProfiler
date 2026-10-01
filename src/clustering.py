@@ -66,5 +66,19 @@ def check_cluster_balance(labels, min_pct: float = 10.0, max_pct : float = 90.0)
     is_balanced = bool(sizes["pct"].between(min_pct, max_pct).all())
     return sizes, is_balanced
 
+def fit_final_kmeans(df_scaled: pd.DataFrame, n_components: int, k: int) -> tuple[np.ndarray, KMeans, PCA, pd.DataFrame]:
+    df_pca, pca = apply_pca(df_scaled, n_components)
+    k_means = KMeans(n_clusters=k, n_init=10, random_state=RANDOM_STATE)
+    labels = k_means.fit_predict(df_pca)
+    return labels, k_means, pca, df_scaled
+
+def attach_labels(df_clean: pd.DataFrame, labels, column: str) -> pd.DataFrame:
+    if len(labels) != len(df_clean):
+        raise ValueError(f"Length mismatch: {len(labels)} labels for {len(df_clean)} clients")
+    df = df_clean.copy()
+    df[column] = np.asarray(labels)
+    return df
+
+
 if __name__ == "__main__":
     pass
