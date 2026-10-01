@@ -54,3 +54,17 @@ def kmeans_grid_search(
     return (
         pd.DataFrame(result).sort_values("silhouette", ascending=False).reset_index(drop=True)
     )
+
+def check_cluster_balance(labels, min_pct: float = 10.0, max_pct : float = 90.0) -> tuple[pd.DataFrame, bool]:
+    counts = pd.Series(labels).value_counts().sort_index()
+    sizes = pd.DataFrame({
+        "count" : counts,
+        "pct" : (counts / counts.sum() * 100).round(1),
+    })
+    sizes.index.name = "cluster"
+
+    is_balanced = bool(sizes["pct"].between(min_pct, max_pct).all())
+    return sizes, is_balanced
+
+if __name__ == "__main__":
+    pass
