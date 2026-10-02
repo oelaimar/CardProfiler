@@ -21,7 +21,7 @@ RANDOM_STATE = 42
 def apply_pca(df_scaled : pd.DataFrame, n_components:int) -> tuple[pd.DataFrame, PCA]:
     pca = PCA(n_components=n_components, random_state=RANDOM_STATE)
     value = pca.fit_transform(df_scaled[FEATURE_COLUMNS])
-    columns = [f"pc{i + 1}" for i in range(n_components)]
+    columns = [f"PC{i + 1}" for i in range(n_components)]
     df_pca = pd.DataFrame(value, columns=columns, index=df_scaled.index)
     return df_pca, pca
 
@@ -71,7 +71,7 @@ def fit_final_kmeans(df_scaled: pd.DataFrame, n_components: int, k: int) -> tupl
     df_pca, pca = apply_pca(df_scaled, n_components)
     k_means = KMeans(n_clusters=k, n_init=10, random_state=RANDOM_STATE)
     labels = k_means.fit_predict(df_pca)
-    return labels, k_means, pca, df_scaled
+    return labels, k_means, pca, df_pca
 
 def attach_labels(df_clean: pd.DataFrame, labels, column: str) -> pd.DataFrame:
     if len(labels) != len(df_clean):
@@ -136,6 +136,13 @@ def dbscan_grid_search(
         pd.DataFrame(results)
         .sort_values("silhouette", ascending=False, na_position="last")
         .reset_index(drop=True))
+
+def fit_final_dbscan(df_scaled: pd.DataFrame, n_components: int, eps: float, min_samples:int) -> tuple[np.ndarray, DBSCAN, pd.DataFrame]:
+    df_pca, _ = apply_pca(df_scaled, n_components)
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+    labels = dbscan.fit_predict(df_pca)
+
+    return labels, dbscan, df_pca
 
 if __name__ == "__main__":
     pass
