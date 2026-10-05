@@ -8,10 +8,15 @@ Usage:
 
 import numpy as np
 import pandas as pd
+from seaborn import matrix
 
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.decomposition import PCA
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import (
+    silhouette_score,
+    davies_bouldin_score,
+    calinski_harabasz_score,
+)
 
 from src.extraction import FEATURE_COLUMNS
 
@@ -143,6 +148,26 @@ def fit_final_dbscan(df_scaled: pd.DataFrame, n_components: int, eps: float, min
     labels = dbscan.fit_predict(df_pca)
 
     return labels, dbscan, df_pca
+
+def clustering_metrics(df_pca: pd.DataFrame, labels, method :str ) -> dict:
+    labels = np.asarray(labels)
+    clustered = labels != -1
+    X, y = df_pca[clustered], labels[clustered]
+    n_clusters = len(np.unique(y))
+    metrics = {
+        "method": method,
+        "n_clusters": n_clusters,
+        "silhouette": np.nan,
+        "davies_bouldin": np.nan,
+        "calinski_harabasz": np.nan,
+        "noise_pct": round((~clustered).mean() * 100, 1),
+        "coverage_pct": round(clustered.mean() * 100, 1),
+    }
+    if n_clusters >= 2:
+        metrics["silhouette"] = round(silhouette_score(X, y), 4)
+        metrics["davies_bouldin"] = round(davies_bouldin_score(X, y), 4)
+        metrics["calinski_harabasz"] = round(calinski_harabasz_score(X, y), 1)
+    return metrics
 
 if __name__ == "__main__":
     pass
