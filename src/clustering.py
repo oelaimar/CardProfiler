@@ -21,6 +21,7 @@ from sklearn.metrics import (
 from src.extraction import FEATURE_COLUMNS
 
 RANDOM_STATE = 42
+METHOD_COLUMNS = {"kmeans": "cluster_kmeans", "dbscan": "cluster_dbscan"}
 
 # KMeans
 def apply_pca(df_scaled : pd.DataFrame, n_components:int) -> tuple[pd.DataFrame, PCA]:
@@ -168,6 +169,63 @@ def clustering_metrics(df_pca: pd.DataFrame, labels, method :str ) -> dict:
         metrics["davies_bouldin"] = round(davies_bouldin_score(X, y), 4)
         metrics["calinski_harabasz"] = round(calinski_harabasz_score(X, y), 1)
     return metrics
+
+def compare_methods(df_pca_kmeans : pd.DataFrame, labels_kmeans , df_pca_dbscan: pd.DataFrame, labels_dbscan) -> pd.DataFrame:
+    rows = []
+    for method, df_pca, labels in [
+        ("kmeans", df_pca_kmeans, labels_kmeans),
+        ("dbscan", df_pca_dbscan, labels_dbscan),
+        ]:
+        metrics = clustering_metrics(df_pca, labels, method)
+        labels = np.asarray(labels)
+        sizes, is_balanced = check_cluster_balance(labels[labels != -1])
+        metrics["min_cluster_pct"] = sizes["pct"].min()
+        metrics["max_cluster_pct"] = sizes["pct"].max()
+        metrics["is_balanced"] = is_balanced
+        rows.append(metrics)
+    return pd.DataFrame(rows).set_index("method")
+
+def choose_method(
+        comparison: pd.DataFrame,
+        silhouette_margin: float = 0.05,
+        max_noise_pct: float = 5.0,) -> tuple[str, str]:
+    km, db = comparison.loc["kmeans"], comparison.loc["dbscan"]
+
+    dbscan_wins = (
+        pd.notna(db["silhouette"])
+        and db["silhouette"] >= km["silhouette"] + silhouette_margin
+        and db["noise_pct"] < max_noise_pct
+        and db["is_balanced"]
+    )
+    if dbscan_wins:
+        return "dbscan", (
+            f"* DBSCAN retained: silhouette {db['silhouette']} vs {km['silhouette']} \n" 
+            f"* (margin >= {silhouette_margin}), noise {db['noise_pct']}% < {max_noise_pct}%, \n" 
+            f"* balanced clusters.\n"
+        )
+    return "kmeans", (
+        f"* K-means retained: it classifies 100% of clients (needed for target). \n" 
+        f"* DBSCAN silhouette = {db['silhouette']}, noise = {db['noise_pct']}%, \n" 
+        f"* balanced = {db['is_balanced']} — not clearly better.\n"
+    )
+
+def set_cluster_final(df_clean: pd.DataFrame, method: str) -> pd.DataFrame:
+    if method not in METHOD_COLUMNS:
+        raise ValueError(f"method must be one of {list(METHOD_COLUMNS)}")
+    source = METHOD_COLUMNS[method]
+    if source not in df_clean.columns:
+        raise KeyError(f"Column '{source}' not found — attach labels first")
+
+    df = df_clean.copy()
+    df["cluster_final"] = df[source]
+
+    if df["cluster_final"].isna().any():
+        raise ValueError("cluster_final contains missing values")
+    if (df["cluster_final"] == -1).any():
+        raise ValueError("cluster_final contains noise (-1): not usable as target")
+    return df
+
+
 
 if __name__ == "__main__":
     pass
