@@ -8,6 +8,7 @@ Usage:
 
 import numpy as np
 import pandas as pd
+from IPython.core.pylabtools import figsize
 from scipy.cluster.hierarchy import centroid
 from seaborn import matrix
 from typing import cast
@@ -339,7 +340,22 @@ def create_target(df_clean: pd.DataFrame, cluster_names: dict[int, str], cluster
         raise ValueError("target proportions differ from cluster proportions")
     return df
 
+def plot_segment_sizes(df: pd.DataFrame, column: str = "target", ax=None):
+    counts = df[column].value_counts()
+    pcts = counts / counts.sum() * 100
 
+    if ax is None:
+        _, ax = plt.subplots(figsize=(8, 5))
+
+    bars = ax.bar(counts.index, counts.values,
+                  color=[f"C{i}" for i in range(len(counts))])
+    ax.bar_label(bars, labels=[f"{c:,} ({p:.1f}%)" for c, p in zip(counts, pcts)])
+
+    ax.set_title("Segment sizes")
+    ax.set_ylabel("Number of clients")
+    ax.set_ylim(0, counts.max() * 1.15)
+    plt.setp(ax.get_xticklabels(), rotation=15, ha="right")
+    return ax
 
 if __name__ == "__main__":
     pass
