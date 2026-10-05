@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from scipy.cluster.hierarchy import centroid
 from seaborn import matrix
-
+from typing import cast
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.decomposition import PCA
 from sklearn.metrics import (
@@ -277,6 +277,30 @@ def plot_cluster_profile_heatmap(profile: pd.DataFrame, ax=None):
     ax.set_ylabel("Cluster")
     plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
     return ax
+
+KEY_FEATURES = ["CASH_ADVANCE", "PURCHASES", "PAYMENTS"]
+
+def cluster_profile_real(df_clean: pd.DataFrame, cluster_col: str = "cluster_final",stat: str = "mean") -> pd.DataFrame:
+    profile = (
+        df_clean.groupby(cluster_col)[FEATURE_COLUMNS]
+        .agg(stat)
+        .rename_axis("cluster")
+        .round(0)
+    )
+    return cast(pd.DataFrame, profile)
+
+def plot_key_features_by_cluster(profile_real: pd.DataFrame, features = KEY_FEATURES ):
+    fig, axes = plt.subplots(1, len(features), figsize=(5 * len(features), 4))
+    for ax, feature in zip(np.atleast_1d(axes), features):
+        values = profile_real[feature]
+        bars = ax.bar(values.index.astype(str), values.values, color=[f"C{i}" for i in range(len(values))])
+        ax.bar_label(bars, fmt="{:,.0f}")
+        ax.set_title(feature)
+        ax.set_xlabel("Cluster")
+        ax.set_ylabel("Amount")
+    fig.suptitle("Key features by cluster — real values")
+    fig.tight_layout()
+    return fig
 
 if __name__ == "__main__":
     pass
