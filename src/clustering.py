@@ -8,6 +8,7 @@ Usage:
 
 import numpy as np
 import pandas as pd
+from scipy.cluster.hierarchy import centroid
 from seaborn import matrix
 
 from sklearn.cluster import KMeans, DBSCAN
@@ -17,6 +18,7 @@ from sklearn.metrics import (
     davies_bouldin_score,
     calinski_harabasz_score,
 )
+import matplotlib.pyplot as plt
 
 from src.extraction import FEATURE_COLUMNS
 
@@ -225,7 +227,36 @@ def set_cluster_final(df_clean: pd.DataFrame, method: str) -> pd.DataFrame:
         raise ValueError("cluster_final contains noise (-1): not usable as target")
     return df
 
+def plot_clusters_2d(df_scaled: pd.DataFrame, cluster_labels, ax=None):
+    df_2d, pca = apply_pca(df_scaled, 2)
+    labels = np.asarray(cluster_labels)
 
+    centroids = df_2d.groupby(labels).mean()
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(9, 7))
+    for cluster in sorted(np.unique(labels)):
+        mask = labels == cluster
+        ax.scatter(
+            df_2d.loc[mask, "PC1"], df_2d.loc[mask, "PC2"],
+            s=8, alpha=0.4,
+            label=f"Cluster {cluster} ({mask.mean() * 100:.1f}%)"
+        )
+
+    ax.scatter(
+        centroids["PC1"], centroids["PC2"],
+        marker="X", s=250, c="black", edgecolors="white", linewidths=0.5,
+        label="Centroids",
+    )
+    for cluster, row in centroids.iterrows():
+        ax.annotate(str(cluster), (row["PC1"], row["PC2"]), xytext=(8, 8), textcoords="offset points", fontweight="bold")
+
+    var = pca.explained_variance_ratio_
+    ax.set_xlabel(f"PC1 ({var[0]:.1%} of variance)")
+    ax.set_ylabel(f"PC2 ({var[1]:.1%} of variance)")
+    ax.set_title("Customer segments (cluster_final) in PCA space")
+    ax.legend(markerscale=2)
+    return ax, centroids
 
 if __name__ == "__main__":
     pass
