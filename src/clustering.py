@@ -19,6 +19,7 @@ from sklearn.metrics import (
     calinski_harabasz_score,
 )
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from src.extraction import FEATURE_COLUMNS
 
@@ -257,6 +258,25 @@ def plot_clusters_2d(df_scaled: pd.DataFrame, cluster_labels, ax=None):
     ax.set_title("Customer segments (cluster_final) in PCA space")
     ax.legend(markerscale=2)
     return ax, centroids
+
+def cluster_profile_standardized(df_scaled: pd.DataFrame, cluster_labels) -> pd.DataFrame:
+    return (
+        df_scaled[FEATURE_COLUMNS].groupby(np.asarray(cluster_labels)).mean().rename_axis("cluster")
+    )
+def plot_cluster_profile_heatmap(profile: pd.DataFrame, ax=None):
+    if ax is None:
+        _, ax = plt.subplots(figsize=(10, 0.8 * len(profile) + 2))
+        sns.heatmap(
+            profile, annot=True, fmt=".2f",
+            cmap="RdBu_r", center=0,
+            linewidths=0.5, cbar_kws={"label": "Mean (in standard deviations)"},
+            ax=ax,
+        )
+    ax.set_title("Cluster profiles — standardized means")
+    ax.set_xlabel("")
+    ax.set_ylabel("Cluster")
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+    return ax
 
 if __name__ == "__main__":
     pass
