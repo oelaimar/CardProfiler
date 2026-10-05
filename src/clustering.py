@@ -302,5 +302,44 @@ def plot_key_features_by_cluster(profile_real: pd.DataFrame, features = KEY_FEAT
     fig.tight_layout()
     return fig
 
+NAMES = {
+    "premium": "Clients Premium",
+    "low": "Clients à Faible Activité",
+    "risk": "Clients à Risque",
+}
+
+def assign_names(profile_real: pd.DataFrame) -> dict[int, str]:
+    risk = profile_real["CASH_ADVANCE"].idxmax()  # withdraws the most cash
+    remaining = profile_real.drop(index=risk)
+    premium = remaining["PURCHASES"].idxmax()  # buys the most
+    low = remaining.drop(index=premium).index[0]  # the one left
+
+    return {
+        int(premium) : NAMES["premium"],
+        int(low) : NAMES["low"],
+        int(risk) : NAMES["risk"],
+    }
+
+def create_target(df_clean: pd.DataFrame, cluster_names: dict[int, str], cluster_col: str = "cluster_final") -> pd.DataFrame:
+    cluster = set(df_clean[cluster_col].unique())
+
+    missing = cluster - set(cluster_names)
+    if missing:
+        raise ValueError(F"Clusters without a name: {missing}")
+    df = df_clean.copy()
+    df["target"] = df[cluster_col].map(cluster_names)
+
+    if df["target"].isna().any():
+        raise ValueError("target contains missing values")
+
+    before =df[cluster_col].value_counts(normalize=True).sort_index()
+    after = df["target"].value_counts(normalize=True)
+    expected = before.rename(index=cluster_names)
+    if not np.allclose(after.sort_index(), expected.sort_index()):
+        raise ValueError("target proportions differ from cluster proportions")
+    return df
+
+
+
 if __name__ == "__main__":
     pass
