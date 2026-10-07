@@ -1,6 +1,7 @@
 import time
 import pandas as pd
-
+import numpy as np
+from sklearn.inspection import permutation_importance
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV, ParameterGrid
 from sklearn.preprocessing import StandardScaler
 from imblearn.pipeline import Pipeline as ImbPipeline
@@ -212,3 +213,31 @@ def tune_models(X_train: pd.DataFrame, y_train: pd.Series, sampling: str = "none
     summary = pd.DataFrame(rows).set_index("model").sort_values("best_cv_f1_macro", ascending=False)
 
     return best_pipelines, summary
+
+def select_best_model(comparison: pd.DataFrame, pipelines: dict, metric: str = "f1_macro") -> tuple[str, object]:
+    best_name = comparison[metric].idxmax()
+    return best_name, pipelines[best_name]
+
+def get_feature_importance(pipeline, X_test=None, y_test=None) -> pd.Series:
+    model = pipeline.named_steps["classifier"]
+
+    if hasattr(model, "feature_importances_"): # Random Forest, Decision Tree
+        values, method = model.feature_importances_, "feature_importances_"
+    elif hasattr(model, "coef_"):  # Logistic Regression
+        values, method = np.abs(model.coef_).mean(axis=0), "mean |coefficient|"
+    else:
+        if X_test is None or y_test is None:
+            raise ValueError("X_test and y_test are needed for permutation importance")
+        result = permutation_importance(pipeline, X_test, y_test, scoring="f1_macro",
+                                        n_repeats=10, random_state=RANDOM_STATE, n_jobs=-1)
+        values, method = result.importances_mean, "permutation importance"
+    return pd.Series(values, index=FEATURE_COLUMNS, name=method).sort_values()
+
+def plot_feature_importance(importance: pd.Series, model_name: str = "", ax=None):
+    if ax is None:
+        _, ax = plt.subplots(figsize=(8, 5))
+    bars = ax.barh(importance.index, importance.values, color="C0")
+    ax.bar_label(bars, fmt="%.3f", padding=3)
+    ax.set_xlabel(importance.name)
+    ax.set_title(f"Feature importance — {model_name}")
+    return ax
