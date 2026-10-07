@@ -1,8 +1,7 @@
 import time
 import pandas as pd
-from IPython.core.pylabtools import figsize
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV, ParameterGrid
 from sklearn.preprocessing import StandardScaler
 from imblearn.pipeline import Pipeline as ImbPipeline
 from imblearn.over_sampling import RandomOverSampler, SMOTE
@@ -157,3 +156,59 @@ def plot_cv_boxplot(cv_scores: pd.DataFrame, scoring: str = "f1_macro", ax=None)
     ax.set_ylabel("")
     ax.set_title("Cross-validation — model stability")
     return ax
+
+param_grids = {
+    "random_forest": {
+        "classifier__n_estimators": [100, 200, 400],
+        "classifier__max_depth": [None, 10, 20],
+        "classifier__min_samples_leaf": [1, 2, 5],
+    },
+    "svm": {
+        "classifier__estimator__C": [0.1, 1, 10, 100],
+        "classifier__estimator__gamma": ["scale", 0.01, 0.1, 1],
+    },
+    "decision_tree": {
+        "classifier__max_depth": [3, 5, 8, 12, None],
+        "classifier__min_samples_leaf": [1, 5, 10, 20],
+        "classifier__criterion": ["gini", "entropy"],
+    },
+    "logistic_regression": {
+        "classifier__C": [0.01, 0.1, 1, 10, 100],
+    },
+}
+
+def tune_models(X_train: pd.DataFrame, y_train: pd.Series, sampling: str = "none",
+                search: str = "grid", n_iter: int = 20, n_splits: int = 5,
+                scoring: str = "f1_macro")-> tuple[dict, pd.DataFrame]:
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=RANDOM_STATE)
+    grids = param_grids
+    best_pipelines, rows = {}, []
+
+    for name, classifier in CLASSIFIRES.items():
+        pipeline = build_pipeline(classifier, sampling=sampling)
+        grid = grids[name]
+        if search == "grid":
+            searcher = GridSearchCV(pipeline, grid, cv=cv, scoring=scoring, n_jobs=-1)
+        elif search == "random":
+            n_combinations = len(ParameterGrid(grid))
+            searcher = RandomizedSearchCV(
+                pipeline, grid, n_iter=min(n_iter, n_combinations), cv=cv, scoring=scoring, n_jobs=-1, random_state=RANDOM_STATE
+            )
+        else:
+            raise ValueError("search must be 'grid' or 'random'")
+
+        start = time.perf_counter()
+        searcher.fit(X_train, y_train)
+        elapsed = time.perf_counter() - start
+
+        best_pipelines[name] = searcher.best_estimator_
+        rows.append({
+            "model": name,
+            "best_cv_f1_macro": round(searcher.best_score_, 4),
+            "best_params": searcher.best_params_,
+            "search_time_s": round(elapsed, 1),
+        })
+
+    summary = pd.DataFrame(rows).set_index("model").sort_values("best_cv_f1_macro", ascending=False)
+
+    return best_pipelines, summary
