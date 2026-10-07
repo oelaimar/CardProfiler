@@ -18,7 +18,7 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report,
 )
-
+from sklearn.model_selection import StratifiedKFold, cross_val_score
 from src.extraction import FEATURE_COLUMNS
 
 RANDOM_STATE = 42
@@ -132,4 +132,28 @@ def plot_f1_comparison(comparison: pd.DataFrame, ax=None):
     ax.set_xlim(data.min() - 0.05, 1.0)
     ax.set_xlabel("Macro F1-score (test set)")
     ax.set_title("Model comparison — macro F1")
+    return ax
+
+def cross_validate_models(X_train: pd.DataFrame, y_train: pd.Series,
+                          sampling: str = "none", n_splits: int = 5,
+                          scoring: str = "f1_macro")-> pd.DataFrame:
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=RANDOM_STATE)
+    rows = []
+    for name, classifier in CLASSIFIRES.items():
+        pipeline = build_pipeline(classifier, sampling=sampling)
+        scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring=scoring, n_jobs=-1)
+        for fold, score in enumerate(scores, start=1):
+            rows.append({"model": name, "fold": fold, scoring: score})
+    return pd.DataFrame(rows)
+
+def plot_cv_boxplot(cv_scores: pd.DataFrame, scoring: str = "f1_macro", ax=None):
+    if ax is None:
+        _, ax = plt.subplots(figsize=(9, 5))
+    order = cv_scores.groupby("model")[scoring].median().sort_values(ascending=False).index
+    sns.boxplot(data=cv_scores, x=scoring, y="model", order=order, ax=ax)
+    sns.stripplot(data=cv_scores, x=scoring, y="model", order=order,
+                  color="black", size=5, ax=ax)
+    ax.set_xlabel(f"{scoring} (each dot = one fold)")
+    ax.set_ylabel("")
+    ax.set_title("Cross-validation — model stability")
     return ax
