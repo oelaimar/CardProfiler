@@ -1,5 +1,6 @@
 import time
 import pandas as pd
+from IPython.core.pylabtools import figsize
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -11,6 +12,12 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    confusion_matrix, classification_report,
+)
 
 from src.extraction import FEATURE_COLUMNS
 
@@ -79,3 +86,50 @@ def train_model(X_train: pd.DataFrame, y_train: pd.Series, sampling: str = "none
         times.append({"model" : name, "train_time_s" : round(elapsed,3)})
         pipelines[name] = pipeline
     return pipelines, pd.DataFrame(times).set_index("model")
+
+def evaluate_models(pipelines: dict, X_test: pd.DataFrame, y_test: pd.Series, train_times: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for name, pipeline in pipelines.items():
+        y_pred = pipeline.predict(X_test)
+        rows.append({
+            "model"           : name,
+            "accuracy"        : accuracy_score(y_test, y_pred),
+            "precision_macro" : precision_score(y_test, y_pred, average="macro"),
+            "recall_macro"    : recall_score(y_test, y_pred, average="macro"),
+            "f1_macro"        : f1_score(y_test, y_pred, average="macro")
+        })
+    table = pd.DataFrame(rows).set_index("model").join(train_times)
+    return table.sort_values("f1_macro", ascending=False).round(4)
+
+def plot_confusion_matrix(pipeline, X_test: pd.DataFrame, y_test: pd.Series, title : str = "", ax=None):
+    labels = pipeline.classes_
+    cm = confusion_matrix(y_test, pipeline.predict(X_test), labels=labels)
+    if ax is None:
+        _, ax = plt.subplots(figsize=(7, 6))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False,
+            xticklabels=labels, yticklabels=labels, ax=ax)
+    ax.set_xlabel("Predicted segment")
+    ax.set_ylabel("True segment")
+    ax.set_title(title)
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+    plt.setp(ax.get_yticklabels(), rotation=0)
+    return ax
+
+def plot_all_confusion_matrices(pipelines: dict, X_test: pd.DataFrame, y_test: pd.Series):
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+    for ax, (name, pipeline) in zip(axes.ravel(), pipelines.items()):
+        plot_confusion_matrix(pipeline, X_test, y_test, title=f"Confusion matrix — {name}", ax=ax)
+    fig.tight_layout()
+    return fig
+
+def plot_f1_comparison(comparison: pd.DataFrame, ax=None):
+    if ax is None:
+        _, ax = plt.subplots(figsize=(8, 5))
+    data = comparison["f1_macro"].sort_values()
+    bars = ax.barh(data.index, data.values,
+                   color=["C2" if i == len(data) - 1 else "C0" for i in range(len(data))])
+    ax.bar_label(bars, fmt="%.3f", padding=3)
+    ax.set_xlim(data.min() - 0.05, 1.0)
+    ax.set_xlabel("Macro F1-score (test set)")
+    ax.set_title("Model comparison — macro F1")
+    return ax
